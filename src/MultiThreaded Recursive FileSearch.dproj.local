@@ -1,0 +1,9 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<BorlandProject>
+	<ActiveMobileDevice>
+		<NoProfile Android64="emulator-5562"/>
+	</ActiveMobileDevice>  <Transactions>
+    <Transaction>2026/01/28 18:11:41.247,=E:\Software\Codegear Delphi\RAD Studio\Projects\MultiThreaded Recursive FileSearch\Unit1.pas</Transaction>
+    <Transaction>2026/01/28 18:12:00.914,E:\Software\Codegear Delphi\RAD Studio\Projects\MultiThreaded Recursive FileSearch\uRecursiveEngine.pas=E:\Software\Codegear Delphi\RAD Studio\Projects\MultiThreaded Recursive FileSearch\Unit1.pas</Transaction>
+  </Transactions>
+</BorlandProject>
