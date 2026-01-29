@@ -19,6 +19,10 @@
 (* Date       Time     TZ   Author        Change
 (* ----------------------------------------------------------
 (* 2026-01-29 11:30    ET   Robert Milan  Scan-safe lifecycle update:
+(*                                 - Drained queued folders on cancel
+(*                                 - Adjusted pending folder counter
+(*                                 - Forced Finished callback when cancel completes
+(*                                 - Prevented UI Disable button from sticking
 (*                                 - Added atomic running guard (m_iRunning)
 (*                                 - Recreated worker threads per scan
 (*                                 - Added ClearQueue between scans
@@ -923,4 +927,3 @@ begin
 end;
 
 end.
-
