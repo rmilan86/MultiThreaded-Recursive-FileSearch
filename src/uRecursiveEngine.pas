@@ -1,25 +1,3 @@
-(************************************************************
-     Project: MultiThreaded Recursive FileSearch
-     Module : uRecursiveEngine.pas
-     Author : Robert Milan (https://caporin.com)
-     License: GNU General Public License v3.0
-
-     Copyright (c) 2026 Robert Milan (https://caporin.com)
-
-     This program is free software: you can redistribute it and/or modify
-     it under the terms of the GNU General Public License as published by
-     the Free Software Foundation, either version 3 of the License, or
-     (at your option) any later version.
-
-     This program is distributed in the hope that it will be useful,
-     but WITHOUT ANY WARRANTY; without even the implied warranty of
-     MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-     GNU General Public License for more details.
-
-     You should have received a copy of the GNU General Public License
-     along with this program.  If not, see <https://www.gnu.org/licenses/>.
-************************************************************)
-
 (************************************************************)
 (* Module Name : uRecursiveEngine.pas
 (* Author      : Robert Milan
@@ -187,6 +165,8 @@ type
           procedure WakeWorkers;
 
           procedure ClearQueue;
+
+          procedure DrainQueueAndAdjustPending;
 
           procedure CreateWorkersForScan;
 
@@ -468,6 +448,46 @@ begin
 end;
 
 
+(************************************************************)
+(* TRecursiveEngine.DrainQueueAndAdjustPending
+(* Purpose:
+(*     During cancel, clear any queued (not-yet-started) folder jobs and
+(*     subtract them from m_iPendingFolders so completion can occur.
+(* Notes:
+(*     - m_iPendingFolders represents queued OR in-progress folder jobs.
+(*     - If we cancel and leave queued jobs counted, Pending never reaches 0,
+(*       and OnFinished will never fire (UI stays stuck on "Disable").
+(************************************************************)
+procedure TRecursiveEngine.DrainQueueAndAdjustPending;
+var
+     { Number of queued jobs removed }
+     l_iDrained : Int64;
+begin
+     { Default drained count }
+     l_iDrained := 0;
+
+     { Drain queue under lock and count removals }
+     m_oQueueCS.Enter;
+     try
+          l_iDrained := m_oQueue.Count;
+
+          while (m_oQueue.Count > 0) do
+          begin
+               m_oQueue.Dequeue;
+          end;
+     finally
+          m_oQueueCS.Leave;
+     end;
+
+     { Adjust pending counter by drained amount }
+     if (l_iDrained > 0) then
+     begin
+          InterlockedExchangeAdd64(m_iPendingFolders, -l_iDrained);
+     end;
+end;
+
+
+
 
 (************************************************************)
 (* TRecursiveEngine.CreateWorkersForScan
@@ -627,9 +647,29 @@ begin
           m_oCancelCS.Leave;
      end;
 
+     { Remove queued work so Pending can reach 0 (required for OnFinished) }
+     DrainQueueAndAdjustPending;
+
      { Wake workers so they re-check cancel quickly }
      WakeWorkers;
+
+     { If no work remains after draining, fire finished immediately (once) }
+     if (m_iPendingFolders <= 0) then
+     begin
+          if (InterlockedExchange(m_iFinishedFired, 1) = 0) then
+          begin
+               { Mark engine idle now (scan-safe for next Start call) }
+               InterlockedExchange(m_iRunning, 0);
+
+               TThread.Queue(nil,
+                    procedure
+                    begin
+                         FireFinished_Queued(True);
+                    end);
+          end;
+     end;
 end;
+
 
 
 
